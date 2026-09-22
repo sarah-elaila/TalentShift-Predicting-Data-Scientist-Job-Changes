@@ -1,6 +1,26 @@
 # TalentShift: Predicting Data Scientist Job Changes
 
-A machine learning project that predicts whether a candidate who completes a company's training course is likely to **look for a new job** or **stay with the company**. The goal is to help HR teams plan hiring, reduce training costs, and focus on candidates who are more likely to stay.
+![Python](https://img.shields.io/badge/Python-3.x-blue)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-ML-orange)
+![XGBoost](https://img.shields.io/badge/XGBoost-Best%20Model-green)
+![Status](https://img.shields.io/badge/Status-Completed-brightgreen)
+
+A machine learning project that predicts whether a candidate who completes a company's data science training course is likely to **look for a new job** or **stay with the company**. The goal is to help HR teams plan hiring, reduce training costs, and focus on candidates who are more likely to stay.
+
+---
+
+## Table of Contents
+
+- [Problem Statement](#problem-statement)
+- [Dataset](#dataset)
+- [Project Workflow](#project-workflow)
+- [Results](#results)
+- [Key Insights](#key-insights)
+- [Saved Artifacts](#saved-artifacts)
+- [Tech Stack](#tech-stack)
+- [How to Run](#how-to-run)
+- [Future Improvements](#future-improvements)
+- [Author](#author)
 
 ---
 
@@ -11,7 +31,7 @@ Companies that run data science training programs want to know which enrollees a
 - `0` → Not looking for a job change
 - `1` → Looking for a job change
 
-The dataset is **imbalanced**: most candidates belong to class 0. The project handles this with class weighting.
+The dataset is **imbalanced**: most candidates belong to class 0. The project handles this with class weighting (`class_weight='balanced'` and `scale_pos_weight`).
 
 ---
 
@@ -42,7 +62,7 @@ The dataset is the **HR Analytics: Job Change of Data Scientists** dataset (avai
 
 ### 1. Exploratory Data Analysis
 - Checked shape, data types, missing values, and duplicates
-- Examined target class distribution
+- Examined the target class distribution
 - Visualized categorical features, including missing values
 - Plotted histograms and boxplots for numeric features to detect outliers
 - Compared feature distributions across target classes
@@ -57,19 +77,19 @@ The dataset is the **HR Analytics: Job Change of Data Scientists** dataset (avai
 ### 3. Preprocessing
 - Dropped `enrollee_id` because it carries no predictive signal
 - 80/20 train-test split (`random_state=42`)
-- **Ordinal Encoding** for categorical features, with unknown categories handled
+- **Ordinal Encoding** for categorical features, with unknown categories mapped to `-1`
 - **Standard Scaling** for numeric features (`city_development_index`, `training_hours`, `experience`)
 - The encoder and scaler were fit on training data only, to avoid data leakage
 
 ### 4. Models Trained
 
-| Model | Imbalance Handling |
-|---|---|
-| Decision Tree (`max_depth=6`) | `class_weight='balanced'` |
-| Random Forest (300 trees, `max_depth=10`) | `class_weight='balanced'` |
-| Logistic Regression | none |
-| SVM (RBF kernel, `C=10`) | `class_weight='balanced'` |
-| XGBoost (100 trees, `max_depth=4`, `lr=0.05`) | `scale_pos_weight` |
+| Model | Key Parameters | Imbalance Handling |
+|---|---|---|
+| Decision Tree | `max_depth=6` | `class_weight='balanced'` |
+| Random Forest | 300 trees, `max_depth=10`, `min_samples_leaf=5` | `class_weight='balanced'` |
+| Logistic Regression | `max_iter=1000` | none |
+| SVM | RBF kernel, `C=10`, `gamma='scale'` | `class_weight='balanced'` |
+| XGBoost | 100 trees, `max_depth=4`, `learning_rate=0.05`, `reg_alpha=1` | `scale_pos_weight` |
 
 ### 5. Evaluation
 Each model was evaluated with:
@@ -86,15 +106,23 @@ Train and test reports were compared to check for overfitting.
 
 | Model | Accuracy | ROC-AUC |
 |---|---|---|
-| Decision Tree | x.xxx | x.xxx |
-| Random Forest | x.xxx | x.xxx |
-| Logistic Regression | x.xxx | x.xxx |
-| SVM | x.xxx | x.xxx |
-| **XGBoost** | **x.xxx** | **x.xxx** |
+| Decision Tree | 0.779 | 0.782 |
+| Random Forest | **0.789** | 0.800 |
+| Logistic Regression | 0.772 | 0.774 |
+| SVM | 0.768 | 0.761 |
+| **XGBoost** | 0.782 | **0.804** |
 
-**XGBoost** was selected as the final model and saved for deployment.
+### Why XGBoost?
 
-Key insight: `city_development_index` is one of the strongest predictors. Candidates from less-developed cities are more likely to be looking for a job change.
+Random Forest achieved slightly higher accuracy, but **XGBoost achieved the highest ROC-AUC (0.804)**. Because the dataset is imbalanced, accuracy can be misleading: a model can score well just by predicting the majority class. ROC-AUC measures how well the model separates the two classes across all thresholds, so it is the more reliable metric here. For this reason, **XGBoost was selected as the final model** and saved for deployment.
+
+---
+
+## Key Insights
+
+- **`city_development_index` is the strongest predictor.** Candidates from less-developed cities are much more likely to be looking for a job change.
+- Tree-based ensemble models (XGBoost and Random Forest) outperformed linear and kernel-based models.
+- All models reached similar performance (ROC-AUC 0.76–0.80), which suggests the features carry a moderate amount of signal and that feature engineering may matter more than further model tuning.
 
 ---
 
@@ -111,36 +139,41 @@ Load them with:
 
 ```python
 import joblib
+
 model   = joblib.load('models/xgb_model.pkl')
 encoder = joblib.load('models/encoder.pkl')
 scaler  = joblib.load('models/scaler.pkl')
 ```
 
-> New data must go through the same cleaning steps (especially the `experience` conversion) before encoding and scaling.
+> **Note:** New data must go through the same cleaning steps (especially the `experience` conversion) before encoding and scaling.
 
 ---
 
 ## Tech Stack
 
-- Python
-- pandas, NumPy
-- scikit-learn
-- XGBoost
-- Matplotlib, Seaborn
-- joblib
-- Google Colab
+- **Language:** Python
+- **Data handling:** pandas, NumPy
+- **Machine learning:** scikit-learn, XGBoost
+- **Visualization:** Matplotlib, Seaborn
+- **Model saving:** joblib
+- **Environment:** Google Colab
 
 ---
 
 ## How to Run
 
+1. Clone the repository:
 ```bash
-git clone https://github.com/<your-username>/talentshift-job-change-prediction.git
-cd talentshift-job-change-prediction
-pip install -r requirements.txt
+   git clone https://github.com/sarah-elaila/TalentShift-Predicting-Data-Scientist-Job-Changes.git
+   cd TalentShift-Predicting-Data-Scientist-Job-Changes
 ```
 
-Then open the notebook in Jupyter or Google Colab and run all cells.
+2. Install the dependencies:
+```bash
+   pip install -r requirements.txt
+```
+
+3. Open the notebook in Jupyter Notebook or Google Colab and run all cells.
 
 **requirements.txt**
 ```
@@ -159,9 +192,8 @@ joblib
 
 - Use One-Hot or Target Encoding for nominal features like `city` and `company_type`
 - Tune hyperparameters with GridSearchCV or Optuna
-- Try SMOTE or threshold tuning for better minority-class recall
+- Try SMOTE or decision-threshold tuning to improve minority-class recall
 - Add SHAP values for model explainability
-- Deploy as a web app with Streamlit or Flask
+- Deploy the model as a web app with Streamlit or Flask
 
 ---
-
